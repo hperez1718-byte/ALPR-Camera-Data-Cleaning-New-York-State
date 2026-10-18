@@ -11,7 +11,7 @@ Extracted and cleaned a dataset of automatic license plate reader (ALPR) / surve
 ## The Dataset
 **Raw:** `flock-cameras-ny-fresh.xlsx` — 8,689 records pulled October 11, 2026 from the DeFlock CDN (crowdsourced OpenStreetMap data) via `pull_flock_cameras.py`.
 
-**Cleaned:** 4,489 verified New York State records, 13 columns:
+**Cleaned:** 4,483 verified New York State records, 13 columns:
 
 | Column | Type | Description |
 |---|---|---|
@@ -46,11 +46,11 @@ Extracted and cleaned a dataset of automatic license plate reader (ALPR) / surve
 10. **Fixed the typo** "Lewsiboro" → "Lewisboro"
 11. **Typed the Direction columns** as Whole Number; replaced 'None' strings with true nulls — *not* 0, because 0° is a valid compass direction (due north) and filling blanks with 0 would corrupt directional analysis
 12. **Fixed impossible direction values** — 9 cells held values outside the valid 0–360° compass range (source typos, e.g. -70, 93420). 7 belonged to out-of-state rows removed in step 13; the remaining 2 were blanked to true nulls (not 0, since 0° is valid north)
-13. **AI-assisted verification & final cleanup (pass 2)** — used Excel Copilot to audit the full dataset: point-in-polygon testing on the LAT/LON coordinates against New York State boundaries, validity checks on Direction_1–4 (must be 0–360 or null), and operator spelling-variant detection. Coordinates don't lie about location: this caught **3,196 out-of-state rows** that operator-name filtering had missed (NJ 1,306 · PA 822 · CT 800 · MA 174 · Ontario 61 · VT 28 · RI 4 · other 1). Flagged rows were moved to a separate audit-trail sheet, then removed → **4,489 verified NY records**. Every flag was independently spot-checked against the coordinates before deletion
+13. **AI-assisted verification & final cleanup (pass 2)** — used Excel Copilot to audit the full dataset: point-in-polygon testing on the LAT/LON coordinates against New York State boundaries, validity checks on Direction_1–4 (must be 0–360 or null), and operator spelling-variant detection. Coordinates don't lie about location: this caught **3,196 out-of-state rows** that operator-name filtering had missed (NJ 1,306 · PA 822 · CT 800 · MA 174 · Ontario 61 · VT 28 · RI 4 · other 1). Flagged rows were moved to a separate audit-trail sheet, then removed → **4,483 verified NY records**. Every flag was independently spot-checked against the coordinates before deletion
 
 ## Results
-- 8,689 → 7,685 → **4,489 verified New York State records** (after AI coordinate verification)
-- **31 distinct manufacturers** — Flock Safety is the largest single manufacturer (4,489-row recount pending Tableau build)
+- 8,689 → 7,685 → **4,483 verified New York State records** (after AI coordinate verification)
+- **31 distinct manufacturers** — Flock Safety is the largest single manufacturer (4,483-row recount pending Tableau build)
 - Zero duplicate IDs; all columns correctly typed
 
 ## Key Takeaway
