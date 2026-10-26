@@ -11,15 +11,16 @@ Extracted and cleaned a dataset of automatic license plate reader (ALPR) / surve
 ## The Dataset
 **Raw:** `flock-cameras-ny-fresh.xlsx` — 8,689 records pulled October 11, 2026 from the DeFlock CDN (crowdsourced OpenStreetMap data) via `pull_flock_cameras.py`.
 
-**Cleaned:** 4,483 verified New York State records, 13 columns:
+**Cleaned:** 4,483 verified New York State records, 10 columns:
 
 | Column | Type | Description |
 |---|---|---|
+| Manufacturer_1 | Text | Camera manufacturer |
+| State | Text | NY |
+| Operator | Text | Operating agency |
 | ID | Whole Number | Unique record identifier |
-| LAT / LON | Decimal Number | GPS coordinates |
-| Manufacturer_1/2/3 | Text | Camera manufacturer(s), split on "/" |
-| Operator_1/2/3 | Text | Operating agency, split on "/" |
-| Direction_1–4 | Whole Number | Compass facing direction(s) in degrees, split on ";" |
+| LAT / LONG | Decimal Number | GPS coordinates |
+| Direction_1–4 | Whole Number | Compass facing direction(s) in degrees |
 
 ## Data Quality Issues Found
 - **Geographic scope creep:** the extraction bounding box pulled in thousands of rows from Connecticut, Massachusetts, Pennsylvania, New Jersey, Vermont, Rhode Island, and Ontario (Canada). Operator-name filtering caught ~1,004 — but 3,196 more slipped through, most with "Unknown" operators, invisible to name-based filtering
@@ -48,9 +49,16 @@ Extracted and cleaned a dataset of automatic license plate reader (ALPR) / surve
 12. **Fixed impossible direction values** — 9 cells held values outside the valid 0–360° compass range (source typos, e.g. -70, 93420). 7 belonged to out-of-state rows removed in step 13; the remaining 2 were blanked to true nulls (not 0, since 0° is valid north)
 13. **AI-assisted verification & final cleanup (pass 2)** — used Excel Copilot to audit the full dataset: point-in-polygon testing on the LAT/LON coordinates against New York State boundaries, validity checks on Direction_1–4 (must be 0–360 or null), and operator spelling-variant detection. Coordinates don't lie about location: this caught **3,196 out-of-state rows** that operator-name filtering had missed (NJ 1,306 · PA 822 · CT 800 · MA 174 · Ontario 61 · VT 28 · RI 4 · other 1). Flagged rows were moved to a separate audit-trail sheet, then removed → **4,483 verified NY records**. Every flag was independently spot-checked against the coordinates before deletion
 
+## Cleanup pass 2 — October 26, 2026
+- **Flattened to single Manufacturer and Operator columns** — Manufacturer_2/3 and Operator_2/3 were nearly empty (one known manufacturer value across both columns; Operator_2 4.0% and Operator_3 2.4% filled), so they were dropped. The data now carries one Manufacturer_1 and one Operator column.
+- **Merged operator spelling variants** — "New York City Department Of Transportation" (29 rows) was folded into "NYC Department of Transportation", giving a single NYC DOT value covering 642 rows.
+- **Renamed LON → LONG** and dropped Region (every row is NY; the State column is retained).
+- Result: same 4,483 verified rows and unique IDs, now in 10 columns.
+
 ## Results
 - 8,689 → 7,685 → **4,483 verified New York State records** (after AI coordinate verification)
-- **31 distinct manufacturers** — Flock Safety is the largest single manufacturer (4,483-row recount pending Tableau build)
+- **25 distinct manufacturers** — Flock Safety is the largest (1,987 cameras, 44.3%)
+- **74 distinct operators** — though 62.2% of cameras still have Unknown operators
 - Zero duplicate IDs; all columns correctly typed
 
 ## Key Takeaway
