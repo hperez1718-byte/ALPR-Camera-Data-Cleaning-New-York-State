@@ -1,6 +1,6 @@
 # ALPR Camera Data Cleaning — New York State
 
-Cleaning and analysis of automated license plate reader (ALPR) camera locations across **New York State**, built from crowdsourced OpenStreetMap data. This dataset feeds my Tableau Public story: [ALPR Camera Analysis – New York State](https://public.tableau.com/app/profile/hyndrani.perez/viz/ALPRCameraAnalysis-NewYorkState/ALPRStory).
+Cleaning and analysis of automated license plate reader (ALPR) camera locations across **New York State**, built from crowdsourced OpenStreetMap data. This dataset feeds my Tableau Public story: [ALPR Cameras in New York State: What Volunteer Mapping Shows](https://public.tableau.com/app/profile/hyndrani.perez/viz/ALPRCamerasinNewYorkStatev2/ALPRCamerasinNewYorkStateWhatVolunteerMappingShows).
 
 **Tools:** Python (extraction, county assignment, workbook build) · Excel Power Query (first-pass cleaning) · Excel Copilot (point-in-polygon audit) · Tableau Public (visualization)
 
