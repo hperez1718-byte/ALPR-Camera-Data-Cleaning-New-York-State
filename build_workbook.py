@@ -1,6 +1,6 @@
 """Step 2 of v2: build ALPR_Camera_Data_v2.xlsx from the county-tagged data.
 
-Usage: python build_workbook.py with_county.csv ALPR_Camera_Data_v2.xlsx ny_counties.csv
+Usage: python build_workbook.py with_county.csv ALPR_Camera_Data_v2.xlsx ny_counties.csv county_pop_2024.csv
 Then open in Excel (or run LibreOffice recalculation) so formula values are cached.
 """
 import sys
@@ -111,6 +111,7 @@ for i in d.index[dup]: flags[i].append("Same coordinates as another camera (kept
 for i in d.index[d.near_only]: flags[i].append("Just outside county outline (coast); assigned nearest county")
 d["Data_Flag"] = [("; ".join(v)) for v in flags.values()]
 
+POP = dict(pd.read_csv(sys.argv[4]).values) if len(sys.argv) > 4 else {}
 counties = sorted(pd.read_csv(sys.argv[3]).County) if len(sys.argv) > 3 else sorted(d.County.unique())
 
 # ---------------- workbook ----------------
@@ -155,8 +156,8 @@ about = [
  ("Sheets", BOLD),
  ("ALPR_Cameras - one row per camera (main table for Tableau). Operator, Sector, Type and Region are formulas pulled from the lookup sheets.", None),
  ("Operator_Lookup - raw operator text -> clean name, sector, type. Edit here to reclassify; ALPR_Cameras updates automatically.", None),
- ("County_Lookup - 62 NY counties -> Region and NY_Region (10 official REDC regions). Yellow Population column is for you to fill in from the Census (see Change_Log).", None),
- ("County_Summary / Region_Summary - counts and shares, all formulas.", None),
+ ("County_Lookup - 62 NY counties -> Region, NY_Region (10 official REDC regions) and Population (Census ACS 2024 5-Year, table B01003).", None),
+ ("County_Stats - one row per county (cameras, population, cameras per 100k) for Tableau. County_Summary / Region_Summary - counts, shares and per-capita rates, all formulas.", None),
  ("Change_Log - every fix made in v2 and why. Data_Issues - rows that were changed or flagged.", None),
 ]
 for i, (t, f) in enumerate(about, 1):
@@ -190,14 +191,14 @@ NYC = {"New York": "Manhattan", "Kings": "Brooklyn", "Queens": "Queens", "Bronx"
 header(cl, 1, ["County", "Borough", "Region", "Population", "NY_Region"])
 for i, c in enumerate(counties, 2):
     reg = "NYC" if c in NYC else "Long Island" if c in ("Nassau", "Suffolk") else "Rest of State"
-    for j, v in enumerate([c, NYC.get(c, ""), reg, None], 1):
+    for j, v in enumerate([c, NYC.get(c, ""), reg, POP.get(c)], 1):
         cell = cl.cell(row=i, column=j, value=v); cell.font = BODY
     cl.cell(row=i, column=5, value=C2R[c]).font = BODY
     cl.cell(row=i, column=4).fill = INPUT; cl.cell(row=i, column=4).font = BLUE
     cl.cell(row=i, column=4).number_format = "#,##0"
 CL_N = len(counties) + 1
 add_table(cl, "CountyLookup", len(counties), 5); widths(cl, [18, 16, 16, 14, 20]); cl.freeze_panes = "A2"
-cl["D1"].comment = Comment("Fill in: U.S. Census Bureau, ACS 5-year table B01003 (Total Population), all counties in New York State, from data.census.gov.", "Claude")
+cl["D1"].comment = Comment("Source: U.S. Census Bureau, American Community Survey 2024 5-Year Estimates, table B01003 (Total Population), all counties in New York State, data.census.gov.", "Claude")
 
 # ---- ALPR_Cameras
 ac = wb.create_sheet("ALPR_Cameras", 1)
@@ -281,6 +282,19 @@ rs["A20"] = "Total"; rs["A20"].font = BOLD; rs["B20"] = "=SUM(B10:B19)"; rs["B20
 rs["A22"] = "REDC regions: the 10 Regional Economic Development Council regions defined by New York State (Empire State Development)."; rs["A22"].font = Font(name=F, italic=True, size=9)
 widths(rs, [20, 10, 11, 14, 12, 13, 13])
 
+# ---- County_Stats (tidy, one row per county, for Tableau)
+st = wb.create_sheet("County_Stats", 2)
+header(st, 1, ["County", "Region", "NY_Region", "Population", "Cameras", "Cameras_per_100k", "Operator_Documented_Cameras", "Flock_Safety_Cameras"])
+for i, c in enumerate(counties, 2):
+    row = [f"=County_Lookup!A{i}", f"=County_Lookup!C{i}", f"=County_Lookup!E{i}", f"=County_Lookup!D{i}",
+           f"=COUNTIFS({A}!$J$2:$J${N},$A{i})", f"=IF(D{i}=0,0,E{i}/D{i}*100000)",
+           f'=COUNTIFS({A}!$J$2:$J${N},$A{i},{A}!$I$2:$I${N},"Yes")',
+           f'=COUNTIFS({A}!$J$2:$J${N},$A{i},{A}!$D$2:$D${N},"Flock Safety")']
+    for j, v in enumerate(row, 1):
+        cell = st.cell(row=i, column=j, value=v); cell.font = Font(name=F, size=10, color="008000") if j <= 4 else BODY
+    st.cell(row=i, column=4).number_format = "#,##0"; st.cell(row=i, column=6).number_format = "0.0"
+add_table(st, "CountyStats", len(counties), 8); widths(st, [16, 14, 18, 12, 10, 16, 18, 16]); st.freeze_panes = "B2"
+
 # ---- Change_Log
 lg = wb.create_sheet("Change_Log")
 LOG = [
@@ -297,7 +311,7 @@ LOG = [
  ("Direction", "NOT FIXABLE YET: Power Query steps 'Replaced value 47/48' turned every 0 (due north) into blank, and 'Removed errors' deleted whole rows whose Direction_1 could not convert to a whole number", "This contradicts the README (0 is valid north). Restoring it needs the raw file 'NEW- Flok Cam.xlsx'. In Power Query: delete those 2 steps, and replace 'Removed errors' with 'Replace errors -> null'.", "unknown until raw file is re-run"),
  ("Duplicates", "Flagged (not removed) cameras sharing exact coordinates with another camera", "Could be 2 cameras on one pole (real) or a double-mapped camera. Kept, but flagged so the choice is visible.", f"{int(dup.sum())} rows"),
  ("Tableau", "Data feeding Tableau has broken longitudes (needed the 'Longitude Fixed' calc). This workbook has correct LONG values", "Fix at the source instead of patching downstream. Point Tableau at this workbook and drop 'Longitude Fixed', 'Is NYC Metro' and the old 'Region' calc.", "all rows"),
- ("To do", "Fill County_Lookup!D (Population)", "Needed for cameras per 100k residents. Source: data.census.gov, ACS 5-year table B01003, all counties in New York State.", "62 counties"),
+ ("Population", "Added county population (ACS 2024 5-Year, table B01003) to County_Lookup; added County_Stats (one row per county) with cameras per 100k residents", "Raw counts mostly track population. Per-capita rates make regions comparable. Source: U.S. Census Bureau, data.census.gov.", "62 counties; total 19,852,366"),
 ]
 header(lg, 1, ["Area", "Change", "Why", "Rows affected"])
 for i, r in enumerate(LOG, 2):

@@ -8,6 +8,7 @@ Cleaning and analysis of automated license plate reader (ALPR) camera locations 
 - **Source:** [DeFlock](https://deflock.me), which publishes ALPR locations mapped by volunteers in OpenStreetMap. Pulled **October 11, 2026** with `pull_flock_cameras.py`.
 - **License:** © OpenStreetMap contributors. Data available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/). The cleaned files in this repo are derived from it and shared under the ODbL as well.
 - **County boundaries:** U.S. Census Bureau cartographic boundary files (1:10m), via the `us-atlas` package.
+- **County population:** U.S. Census Bureau, American Community Survey 2024 5-Year Estimates, table B01003 (Total Population), from data.census.gov.
 
 ## What this data can and can't tell you
 - **"Operator not documented" ≠ secret.** 62% of cameras have no operator tag. That means volunteers didn't record who runs the camera. Flock Safety cameras are easy to recognize on sight, but their operator usually isn't visible, so 87% of Flock cameras have no documented operator.
@@ -19,6 +20,7 @@ Cleaning and analysis of automated license plate reader (ALPR) camera locations 
 |---|---|
 | `ALPR_Camera_Data_v2.xlsx` | **Current version.** Main table plus operator and county lookups, summaries, change log, and flagged rows |
 | `ALPR_Camera_Cleaned_NY_v2.csv` | Main table from the workbook as a plain CSV (4,483 rows, 18 columns) |
+| `county_pop_2024.csv` | Population of all 62 NY counties (ACS 2024 5-Year, B01003) |
 | `pull_flock_cameras.py` | Pulls raw data from the DeFlock CDN |
 | `assign_counties.py` | Assigns each camera to its NY county (point-in-polygon) |
 | `build_workbook.py` | Builds the v2 workbook (lookups, formulas, summaries, change log) |
@@ -44,16 +46,17 @@ A review of v1 found problems in the cleaning itself:
 - **Known open issue:** two Power Query steps turned every 0° (due north) direction into blank, and a "Removed errors" step can delete whole rows. Fixing this means re-running from the raw file; tracked in the workbook's `Change_Log`.
 
 ## Results
-| Region | Cameras | Operator documented | Flock Safety share |
-|---|---|---|---|
-| New York City | 1,320 | 81% | 7% |
-| Long Island | 720 | 24% | 76% |
-| Rest of State | 2,443 | 19% | 55% |
-| **New York State** | **4,483** | **38%** | **44%** |
+| Region | Cameras | Cameras per 100k residents | Operator documented | Flock Safety share |
+|---|---|---|---|---|
+| New York City | 1,320 | 15.6 | 81% | 7% |
+| Long Island | 720 | 24.7 | 24% | 76% |
+| Rest of State | 2,443 | 28.9 | 19% | 55% |
+| **New York State** | **4,483** | **22.6** | **38%** | **44%** |
 
 New York has two very different camera landscapes in this data. In NYC, the mapped cameras are mostly run by city agencies (NYC DOT, NYPD, MTA), use a mix of vendors, and usually have a documented operator. Outside NYC, Flock Safety is the main vendor and most cameras have no documented operator.
 
+**Raw counts vs. per resident:** NYC has the most mapped cameras but the lowest rate per resident. Among New York's 10 official economic development regions, Mid-Hudson has the highest rate (39.6 per 100k) and NYC the lowest (15.6). Counts reflect volunteer mapping coverage, so these rates are a lower bound.
+
 ## Next steps
-- Add county population (Census ACS table B01003) to compare **cameras per 100k residents** (the workbook formulas are ready)
 - Compare against EFF's Atlas of Surveillance to measure how many "not documented" operators are actually knowable
 - Use NYC Open Data to separate traffic-enforcement cameras from investigative ALPRs
