@@ -1,69 +1,58 @@
 # ALPR Camera Data Cleaning — New York State
 
-## Overview
-Extracted and cleaned a dataset of automatic license plate reader (ALPR) / surveillance camera locations across **New York State** using Python and Excel Power Query. This cleaned dataset feeds a Tableau visualization project (in progress) exploring camera distribution by manufacturer, operator, and region.
+Cleaning and analysis of automated license plate reader (ALPR) camera locations across **New York State**, built from crowdsourced OpenStreetMap data. This dataset feeds my Tableau Public story: [ALPR Camera Analysis – New York State](https://public.tableau.com/app/profile/hyndrani.perez/viz/ALPRCameraAnalysis-NewYorkState/ALPRStory).
 
-## Tools
-- Python (data extraction)
-- Microsoft Excel — Power Query (data cleaning)
-- Excel Copilot (AI-assisted audit & verification — coordinate point-in-polygon testing, direction validation, operator variant detection)
+**Tools:** Python (extraction, county assignment, workbook build) · Excel Power Query (first-pass cleaning) · Excel Copilot (point-in-polygon audit) · Tableau Public (visualization)
 
-## The Dataset
-**Raw:** `flock-cameras-ny-fresh.xlsx` — 8,689 records pulled October 11, 2026 from the DeFlock CDN (crowdsourced OpenStreetMap data) via `pull_flock_cameras.py`.
+## Data source and license
+- **Source:** [DeFlock](https://deflock.me), which publishes ALPR locations mapped by volunteers in OpenStreetMap. Pulled **October 11, 2026** with `pull_flock_cameras.py`.
+- **License:** © OpenStreetMap contributors. Data available under the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/). The cleaned files in this repo are derived from it and shared under the ODbL as well.
+- **County boundaries:** U.S. Census Bureau cartographic boundary files (1:10m), via the `us-atlas` package.
 
-**Cleaned:** 4,483 verified New York State records, 10 columns:
+## What this data can and can't tell you
+- **"Operator not documented" ≠ secret.** 62% of cameras have no operator tag. That means volunteers didn't record who runs the camera. Flock Safety cameras are easy to recognize on sight, but their operator usually isn't visible, so 87% of Flock cameras have no documented operator.
+- **Counts reflect where volunteers have mapped.** Treat them as a lower bound, not a full inventory.
+- **"ALPR" covers different uses.** The data includes traffic-enforcement cameras (e.g., NYC DOT red-light and speed cameras) alongside investigative plate readers (e.g., Flock Safety).
 
-| Column | Type | Description |
-|---|---|---|
-| Manufacturer_1 | Text | Camera manufacturer |
-| State | Text | NY |
-| Operator | Text | Operating agency |
-| ID | Whole Number | Unique record identifier |
-| LAT / LONG | Decimal Number | GPS coordinates |
-| Direction_1–4 | Whole Number | Compass facing direction(s) in degrees |
+## Files
+| File | What it is |
+|---|---|
+| `ALPR_Camera_Data_v2.xlsx` | **Current version.** Main table plus operator and county lookups, summaries, change log, and flagged rows |
+| `ALPR_Camera_Cleaned_NY_v2.csv` | Main table from the workbook as a plain CSV (4,483 rows, 18 columns) |
+| `ALPR_Camera_Cleaned_NY.csv` | v1 output (kept for history) |
+| `pull_flock_cameras.py` | Pulls raw data from the DeFlock CDN |
+| `assign_counties.py` | Assigns each camera to its NY county (point-in-polygon) |
+| `build_workbook.py` | Builds the v2 workbook (lookups, formulas, summaries, change log) |
 
-## Data Quality Issues Found
-- **Geographic scope creep:** the extraction bounding box pulled in thousands of rows from Connecticut, Massachusetts, Pennsylvania, New Jersey, Vermont, Rhode Island, and Ontario (Canada). Operator-name filtering caught ~1,004 — but 3,196 more slipped through, most with "Unknown" operators, invisible to name-based filtering
-- Blank cells across Manufacturer, Operator, and Direction columns
-- Inconsistent manufacturer capitalization and acronym casing ("Mav (Iq:350Xr)", "Ndi", "Turing Ai", "Unv")
-- Stray characters in values ("Motorola?", "Lowe'S", trailing whitespace)
-- Non-manufacturer values in the Manufacturer column ("Municipal Parking Services", "Oswego City")
-- Operator field combining multiple agencies/programs in a single string
-- Typo in a locality name ("Lewsiboro")
-- Direction stored as text with 'None' strings instead of nulls
-- 9 direction values outside the valid 0–360 compass range (source typos, e.g. -70, 93420)
-- Duplicate rows
+## Pipeline
+**8,689** raw rows (rectangle around NY) → **7,685** after removing out-of-state operators (Power Query) → **4,483** after a point-in-polygon check against the NY State boundary.
 
-## Cleaning Steps
-1. **Extracted** fresh data from the DeFlock CDN with `pull_flock_cameras.py` (8,689 rows, 6 source columns)
-2. **Scoped to New York State (pass 1)** — removed ~1,004 rows with out-of-state operators (CT, MA, PA, NJ, VT, RI) and Ontario records → 7,685 rows
-3. **Split Manufacturer** on "/" into `Manufacturer_1/2/3` (some cameras list multiple manufacturers)
-4. **Split Operator** on "/" into `Operator_1/2/3`, preserving the full original titles (e.g. "Tarrytown Westchester County Police RTC") since the full wording carries useful information
-5. **Split Direction** on ";" into `Direction_1`–`Direction_4` (cameras can face multiple directions, e.g. "360;180")
-6. **Standardized blanks** → "Unknown" for transparency in text columns
-7. **Removed duplicate rows**
-8. **Standardized manufacturers:** "Mav (Iq:350Xr)" → "MAV Systems" · "Ndi" → "NDI Recognition Systems" · "Motorola?" → "Motorola" · "Unv" → "UNV" · "Turing Ai" → "Turing AI" · "Lowe'S" → "Lowe's" · trimmed trailing whitespace
-9. **Removed non-manufacturer values** ("Municipal Parking Services", "Oswego City") from the Manufacturer column
-10. **Fixed the typo** "Lewsiboro" → "Lewisboro"
-11. **Typed the Direction columns** as Whole Number; replaced 'None' strings with true nulls — *not* 0, because 0° is a valid compass direction (due north) and filling blanks with 0 would corrupt directional analysis
-12. **Fixed impossible direction values** — 9 cells held values outside the valid 0–360° compass range (source typos, e.g. -70, 93420). 7 belonged to out-of-state rows removed in step 13; the remaining 2 were blanked to true nulls (not 0, since 0° is valid north)
-13. **AI-assisted verification & final cleanup (pass 2)** — used Excel Copilot to audit the full dataset: point-in-polygon testing on the LAT/LON coordinates against New York State boundaries, validity checks on Direction_1–4 (must be 0–360 or null), and operator spelling-variant detection. Coordinates don't lie about location: this caught **3,196 out-of-state rows** that operator-name filtering had missed (NJ 1,306 · PA 822 · CT 800 · MA 174 · Ontario 61 · VT 28 · RI 4 · other 1). Flagged rows were moved to a separate audit-trail sheet, then removed → **4,483 verified NY records**. Every flag was independently spot-checked against the coordinates before deletion
+### v1: Power Query cleaning (Oct 2026)
+- Split multi-value Manufacturer, Operator and Direction fields; standardized blanks, casing and stray characters; removed duplicate rows
+- Converted Direction to whole numbers with true nulls instead of 0, because 0° is a valid compass direction (due north)
+- **Scope check:** filtering by operator name removed ~1,004 out-of-state rows, but a coordinate check later found **3,196 more** (NJ 1,306 · PA 822 · CT 800 · MA 174 · Ontario 61 · VT 28 · RI 4 · other 1), mostly with blank operators that name filtering couldn't catch. Lesson: verify location with coordinates, not names.
 
-## Cleanup pass 2 — October 26, 2026
-- **Flattened to single Manufacturer and Operator columns** — Manufacturer_2/3 and Operator_2/3 were nearly empty (one known manufacturer value across both columns; Operator_2 4.0% and Operator_3 2.4% filled), so they were dropped. The data now carries one Manufacturer_1 and one Operator column.
-- **Merged operator spelling variants** — "New York City Department Of Transportation" (29 rows) was folded into "NYC Department of Transportation", giving a single NYC DOT value covering 642 rows.
-- **Renamed LON → LONG** and dropped Region (every row is NY; the State column is retained).
-- Result: same 4,483 verified rows and unique IDs, now in 10 columns.
+### v2: Audit and restructure (Nov 2026)
+A review of v1 found problems in the cleaning itself:
+- **Lookup tables instead of find-and-replace.** Replacing partial text caused errors (e.g., "Yorktown" → "Yorktown Heights" → "Yorktown Heights Heights"). All 74 raw operator values now map through `Operator_Lookup` to a clean name, a sector (Police / Sheriff, Transportation, Municipality, University, Retail, Other Government) and a type.
+- **Merged variants:** 3 MTA spellings → MTA (127 cameras); NYC DOT red-light and speed programs run by Verra Mobility → NYC DOT (651 cameras).
+- **Fixed typos** that v1 listed as fixed but were still in the data (Lewsiboro), or that a later Power Query step brought back (Pleasantiville).
+- **Real geography:** each camera is matched to its county by coordinates. `Region` (NYC / Long Island / Rest of State) and `NY_Region` (New York's 10 official economic development regions) come from County. The earlier Tableau region rule used lat/long rectangles, which put 129 Westchester and Nassau cameras in "NYC" and 28 Westchester cameras in "Long Island."
+- **Direction:** blanked 2 impossible values still in the v1 CSV (93,420 and 2,060).
+- **Flagged, not deleted:** 31 cameras that share exact coordinates with another camera (could be two cameras on one pole), and 11 coastal points assigned to the nearest county.
+- **Known open issue:** two Power Query steps turned every 0° (due north) direction into blank, and a "Removed errors" step can delete whole rows. Fixing this means re-running from the raw file; tracked in the workbook's `Change_Log`.
 
 ## Results
-- 8,689 → 7,685 → **4,483 verified New York State records** (after AI coordinate verification)
-- **25 distinct manufacturers** — Flock Safety is the largest (1,987 cameras, 44.3%)
-- **74 distinct operators** — though 62.2% of cameras still have Unknown operators
-- Zero duplicate IDs; all columns correctly typed
+| Region | Cameras | Operator documented | Flock Safety share |
+|---|---|---|---|
+| New York City | 1,320 | 81% | 7% |
+| Long Island | 720 | 24% | 76% |
+| Rest of State | 2,443 | 19% | 55% |
+| **New York State** | **4,483** | **38%** | **44%** |
 
-## Key Takeaway
-Real-world data is messy. Methodical cleaning — scoping geography, handling nulls, standardizing text, fixing data types — is what makes analysis possible. And cleaning is never one-and-done: AI-assisted verification (point-in-polygon on raw coordinates) caught 3,196 bad rows that name-based filtering missed. Trust, then verify — especially with coordinates. Every decision here is documented so the process is repeatable.
+New York has two very different camera landscapes in this data. In NYC, the mapped cameras are mostly run by city agencies (NYC DOT, NYPD, MTA), use a mix of vendors, and usually have a documented operator. Outside NYC, Flock Safety is the main vendor and most cameras have no documented operator.
 
-## What's Next
-- Tableau dashboard: camera density by region, manufacturer share, operator coverage
-- The narrative is emerging from the clean data — transparency and surveillance density are the leading angles
+## Next steps
+- Add county population (Census ACS table B01003) to compare **cameras per 100k residents** (the workbook formulas are ready)
+- Compare against EFF's Atlas of Surveillance to measure how many "not documented" operators are actually knowable
+- Use NYC Open Data to separate traffic-enforcement cameras from investigative ALPRs
