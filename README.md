@@ -19,10 +19,11 @@ Cleaning and analysis of automated license plate reader (ALPR) camera locations 
 |---|---|
 | `ALPR_Camera_Data_v2.xlsx` | **Current version.** Main table plus operator and county lookups, summaries, change log, and flagged rows |
 | `ALPR_Camera_Cleaned_NY_v2.csv` | Main table from the workbook as a plain CSV (4,483 rows, 18 columns) |
-| `ALPR_Camera_Cleaned_NY.csv` | v1 output (kept for history) |
 | `pull_flock_cameras.py` | Pulls raw data from the DeFlock CDN |
 | `assign_counties.py` | Assigns each camera to its NY county (point-in-polygon) |
 | `build_workbook.py` | Builds the v2 workbook (lookups, formulas, summaries, change log) |
+
+The v1 output (`ALPR_Camera_Cleaned_NY.csv`) was removed in favor of v2. It is still available in this repo's commit history for before-and-after comparison.
 
 ## Pipeline
 **8,689** raw rows (rectangle around NY) → **7,685** after removing out-of-state operators (Power Query) → **4,483** after a point-in-polygon check against the NY State boundary.
